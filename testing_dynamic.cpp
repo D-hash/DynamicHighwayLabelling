@@ -6,9 +6,7 @@
 #include <networkit/io/EdgeListReader.hpp>
 #include <networkit/graph/GraphTools.hpp>
 #include "mytimer.h"
-#include "pruned_landmark_labeling.h"
 #include <networkit/distance/Diameter.hpp>
-#include "pruned_landmark_labeling.h"
 #include  <random>
 #include  <iterator>
 
