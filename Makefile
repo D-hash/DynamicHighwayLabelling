@@ -10,7 +10,7 @@ INCLUDEPATH = /usr/include/valgrind
 PATHLIB = $(HOME)/networkit/build/
 
 TARGETS = testing_dynamic
-OTHERS = highway_cover_labelling.h libraries.h pruned_landmark_labeling.h
+OTHERS = highway_cover_labelling.h libraries.h
 
 
 all:
