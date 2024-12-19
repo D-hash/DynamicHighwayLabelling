@@ -199,13 +199,12 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
     }
     landmarks.clear();
     if(dyntype == 1) {
-        for (vertex i = 0; i < L - changes ; i++) {
+        for (vertex i = 0; i < L ; i++) {
             landmarks.insert(reverse_ordering[i]);
         }
-        for(vertex i = L - changes; i < L; i++){
+        for(vertex i = L; i < L+changes; i++){
             landmarks_incremental.push_back(reverse_ordering[i]);
         }
-        L = L - changes;
     }
     else if(dyntype == 2) {
         for (vertex i = 0; i < L ; i++) {
