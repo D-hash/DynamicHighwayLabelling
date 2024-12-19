@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
     long dhl_size = graph.isDirected() ? hl->DirectedLabellingSize() : hl->LabellingSize();
     std::cout << "Current DHL size " << dhl_size << "\n";
     std::cout << "Current number of landmarks " << hl->L << "\n";
-    hl->StoreIndex(graph_location, true);
+    hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"dynamic");
     vector<double> hl_query_time;
     vector<double> naive_query_time;
     vector<double> sssp_query_time;
@@ -355,7 +355,7 @@ int main(int argc, char **argv) {
     scratch_hl_constr_time = timer.elapsed();
     long scratch_hl_size = graph.isDirected() ? scratch_hl->DirectedLabellingSize() : scratch_hl->LabellingSize();
     cout << "Scratch HL constr time " << scratch_hl_constr_time << " | HL size " << scratch_hl_size << "\n";
-    scratch_hl->StoreIndex(graph_location, false);
+    scratch_hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"_scratch");
     ProgressStream scratch_query_bar(q);
     scratch_query_bar.label() << "Scratch query computation";
     int i = 0;
