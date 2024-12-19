@@ -36,6 +36,7 @@ class HighwayLabelling {
     void GetBeerStores(std::vector<vertex>& beer_stores);
     void GetIncrementalBeerStores(std::vector<vertex>& beer_stores);
   void SetBeerStores(std::vector<vertex>& beer_stores);
+  void StoreIndex(std::string filename, bool dynamic);
 
   // INCREMENTAL
   void AddLandmark(vertex r);
@@ -1764,5 +1765,33 @@ dist HighwayLabelling::BoundedSearch(vertex s, vertex t) {
     delete [] to_vertices;
     return m;
 }
+
+inline void HighwayLabelling::StoreIndex(std::string filename, bool dynamic) {
+        std::ofstream ofs(std::string("index/")+std::string(filename) +
+            (dynamic ? std::string("_dynamic_") : std::string("_scratch_"))+ std::string("index"));
+    for (int i = 0; i < V; i++) {
+        vertex C = 0;
+        for (int j = 0; j < distances[i].size(); j++) {
+            if(distances[i][j] != null_distance)
+                C++;
+        }
+        ofs.write((char*)&C, sizeof(C));
+        for (int j = 0; j < distances[i].size(); j++) {
+            if(distances[i][j] != null_distance) {
+                ofs.write((char*)&j, sizeof(j));
+                ofs.write((char*)&distances[i][j], sizeof(distances[i][j]));
+            }
+        }
+    }
+
+    for (const vertex & v: landmarks) {
+        for (const vertex & w: landmarks) {
+            if(highway[v][w] != null_distance)
+                ofs.write((char*)&highway[v][w], sizeof(highway[v][w]));
+        }
+    }
+    ofs.close();
+}
+
 
 #endif  // HGHWAY_LABELING_H_
