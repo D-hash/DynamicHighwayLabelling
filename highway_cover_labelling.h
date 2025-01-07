@@ -211,6 +211,14 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
             landmarks.insert(reverse_ordering[i]);
         }
     }
+    else if(dyntype == 3) {
+        for (vertex i = 0; i < L ; i++) {
+            landmarks.insert(reverse_ordering[i]);
+        }
+        for(vertex i = L; i < L+changes/2; i++){
+            landmarks_incremental.push_back(reverse_ordering[i]);
+        }
+    }
     delete[] ordering_rank;
 
     pruning_flag.resize(V);
