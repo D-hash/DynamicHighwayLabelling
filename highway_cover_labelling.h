@@ -30,6 +30,7 @@ class HighwayLabelling {
   dist DirectedNaiveQueryDistance(vertex s, vertex t);
   dist BFSQuery(vertex s, vertex t);
     dist DijkstraQuery(vertex s, vertex t);
+    dist StandardDijkstraQuery(vertex s, vertex t);
     dist DirectedDijkstra(vertex s, vertex t);
   dist BoundedSearch(vertex s, vertex t);
   dist P2PBFS(vertex s, vertex landmark, dist ub, dist partial, dist* to_vertices);
@@ -37,7 +38,7 @@ class HighwayLabelling {
     void GetIncrementalBeerStores(std::vector<vertex>& beer_stores);
   void SetBeerStores(std::vector<vertex>& beer_stores);
   void StoreIndex(std::string filename);
-
+  dist SPQuery(vertex s, vertex t);
   // INCREMENTAL
   void AddLandmark(vertex r);
     void AddLandmarkDirected(vertex r);
@@ -48,6 +49,8 @@ class HighwayLabelling {
   std::vector<vertex> reverse_ordering;
   vertex L;
   std::set<vertex> landmarks;
+    std::set<vertex> landmark_pool;
+
 
 private:
   vertex V;  // total number of vertices
@@ -72,6 +75,7 @@ private:
     std::vector<dist> dij_distances;
     std::vector<dist> dij_distances_in;
     std::vector<vertex> predecessors;
+    std::vector<bool> is_landmark;
 };
 
 
@@ -198,9 +202,11 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
         this->ordering[ordering_rank[count].second] = count;
     }
     landmarks.clear();
+    is_landmark.resize(V);
     if(dyntype == 1) {
         for (vertex i = 0; i < L ; i++) {
             landmarks.insert(reverse_ordering[i]);
+            is_landmark[reverse_ordering[i]] = true;
         }
         for(vertex i = L; i < L+changes; i++){
             landmarks_incremental.push_back(reverse_ordering[i]);
@@ -209,18 +215,33 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
     else if(dyntype == 2) {
         for (vertex i = 0; i < L ; i++) {
             landmarks.insert(reverse_ordering[i]);
+            is_landmark[reverse_ordering[i]] = true;
+
         }
     }
     else if(dyntype == 3) {
         for (vertex i = 0; i < L ; i++) {
             landmarks.insert(reverse_ordering[i]);
+            is_landmark[reverse_ordering[i]] = true;
+
         }
         for(vertex i = L; i < L+changes/2; i++){
             landmarks_incremental.push_back(reverse_ordering[i]);
         }
     }
+    else if(dyntype == 4) {
+        for (vertex i = 0; i < L ; i++) {
+            landmark_pool.insert(reverse_ordering[i]);
+        }
+        for (vertex i = 0; i < L/2 ; i++) {
+            vertex landmark = *select_randomly(landmark_pool.begin(), landmark_pool.end());
+            landmarks.insert(landmark);
+            is_landmark[reverse_ordering[i]] = true;
+            landmark_pool.erase(landmark_pool.find(landmark));
+        }
+    }
     delete[] ordering_rank;
-
+    //L = L/2;
     pruning_flag.resize(V);
     dij_distances.resize(V, null_distance);
     dij_distances_in.resize(V, null_distance);
@@ -1051,6 +1072,7 @@ void HighwayLabelling::AddLandmark(vertex r) {
     // compute Highway distances from previous landmarks to r
     // add distances in Highway between r and landmarks directly connected to r (i.e. in L(r))
     landmarks.insert(r);
+    is_landmark[r] = true;
     highway[r] = std::unordered_map<vertex, dist> ();
     for(size_t i = 0; i < landmarks_distances[r].size(); i++){
         highway[r][landmarks_distances[r][i]] = distances[r][i];
@@ -1350,6 +1372,7 @@ void HighwayLabelling::RemoveLandmark(vertex r) {
 
     L--;
     landmarks.erase(r);
+    is_landmark[r] = false;
 
     std::vector<std::pair<vertex,dist>> affected_landmarks;
 
@@ -1799,5 +1822,65 @@ inline void HighwayLabelling::StoreIndex(std::string filename) {
     ofs.close();
 }
 
+
+dist HighwayLabelling::SPQuery(vertex s, vertex t) {
+    dist ub = QueryDistance(s,t);
+    dist m = null_distance;
+    dij_distances[s] = 0;
+    std::priority_queue<std::pair<dist,vertex>, std::vector<std::pair<dist,vertex>>,
+            PQComparator> pq;
+    pq.push(std::make_pair(0,s));
+    std::vector<vertex> reached;
+    reached.push_back(s);
+    while(!pq.empty()){
+        vertex v = pq.top().second;
+        pq.pop();
+        for(auto w: graph.neighborRange(v)){
+            if(is_landmark[w]) continue;
+            if(dij_distances[v] + graph.weight(v,w) >= ub) continue;
+            if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)){
+                dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
+                reached.push_back(w);
+                pq.push(std::make_pair(dij_distances[w], w));
+            }
+
+        }
+    }
+    m = min(dij_distances[t], ub);
+    for(auto w: reached) {
+        dij_distances[w] = null_distance;
+    }
+    return m;
+}
+
+
+dist HighwayLabelling::StandardDijkstraQuery(vertex s, vertex t) {
+    dist m = null_distance;
+
+    dij_distances[s] = 0;
+
+    std::priority_queue<std::pair<dist,vertex>, std::vector<std::pair<dist,vertex>>,
+            PQComparator> pq;
+    pq.push(std::make_pair(0,s));
+    std::vector<vertex> reached;
+    reached.push_back(s);
+    while(!pq.empty()){
+        vertex v = pq.top().second;
+        pq.pop();
+        for(auto w: graph.neighborRange(v)){
+            if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)){
+                dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
+                reached.push_back(w);
+                pq.push(std::make_pair(dij_distances[w], w));
+            }
+
+        }
+    }
+    m = dij_distances[t];
+    for(auto w: reached) {
+        dij_distances[w] = null_distance;
+    }
+    return m;
+}
 
 #endif  // HGHWAY_LABELING_H_

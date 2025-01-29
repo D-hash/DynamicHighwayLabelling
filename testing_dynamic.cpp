@@ -10,20 +10,6 @@
 #include  <random>
 #include  <iterator>
 
-template<typename Iter, typename RandomGenerator>
-Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
-    std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
-    std::advance(start, dis(g));
-    return start;
-}
-
-template<typename Iter>
-Iter select_randomly(Iter start, Iter end) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    return select_randomly(start, end, gen);
-}
-
 using namespace std;
 double median(std::vector<double>& arr) { //SORTS
     size_t n = arr.size() / 2;
@@ -213,6 +199,51 @@ int main(int argc, char **argv) {
     hl_constr_time = timer.elapsed();
     long hl_size = graph.isDirected() ? hl->DirectedLabellingSize() : hl->LabellingSize();
     cout << "HL constr time " << hl_constr_time << " | HL size " << hl_size << "\n";
+    vector<pair<int,int>> queried_nodes;
+
+    long q = num_queries;
+    ProgressStream query_bar(q);
+    query_bar.label() << "Query computation";
+    std::vector<dist> init_distances;
+    std::vector<double> init_query_time;
+    vector<double> sssp_query_time;
+
+    while(num_queries--){
+        // for(vertex s: graph.nodeRange()){
+        //     for (vertex t: graph.nodeRange()) {
+        int s = NetworKit::GraphTools::randomNode(graph);
+        int t = NetworKit::GraphTools::randomNode(graph);
+
+        queried_nodes.emplace_back(s,t);
+        double hl_q_time = 0.0;
+        timer.restart();
+        dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(s,t) : hl->SPQuery(s,t);
+        hl_q_time += timer.elapsed();
+        init_distances.push_back(hld);
+        init_query_time.push_back(hl_q_time);
+
+        dist ssspd;
+        double sssp_time = 0.0;
+        timer.restart();
+        if(q - num_queries < 100) {
+            if (graph.isDirected())
+                ssspd = hl->DirectedDijkstra(s, t);
+            else
+                ssspd = hl->StandardDijkstraQuery(s, t);
+            sssp_time += timer.elapsed();
+            sssp_query_time.push_back(sssp_time);
+            if (ssspd != hld) {
+                cout << "Error between " << s << " and " << t << "\n";
+                cout << "HL distance " << (int) hld << " | SSSP distance " << (int) ssspd << "\n";
+                throw new std::runtime_error("experiment fails");
+            }
+        }
+
+        ++query_bar;
+        //}
+    }
+    cout << "Init HL median time " << median(init_query_time) << " | mean time " << average(init_query_time) << "\n";
+    cout << "SSSP median time " << median(sssp_query_time) << " | mean time " << average(sssp_query_time) << "\n";
 
     int modifications = graph_changes;
     std::vector<double> incremental_time;
@@ -289,50 +320,35 @@ int main(int argc, char **argv) {
     hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"dynamic");
     vector<double> hl_query_time;
     vector<double> naive_query_time;
-    vector<double> sssp_query_time;
     vector<double> bs_query_time;
     vector<double> scratch_query_time;
     vector<dist> queried_distances;
-    long q = num_queries;
-    ProgressStream query_bar(q);
-    vector<pair<int,int>> queried_nodes;
-    query_bar.label() << "Query computation";
-    while(num_queries--){
+    ProgressStream dyn_query_bar(q);
+    dyn_query_bar.label() << "Query computation";
+    int j=0;
+    for(const auto & p: queried_nodes){
     // for(vertex s: graph.nodeRange()){
     //     for (vertex t: graph.nodeRange()) {
-            int s = NetworKit::GraphTools::randomNode(graph);
-            int t = NetworKit::GraphTools::randomNode(graph);
 
-            queried_nodes.emplace_back(s,t);
             double hl_q_time = 0.0;
             timer.restart();
-            dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(s,t) : hl->QueryDistance(s,t);
+            dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(p.first,p.second) : hl->SPQuery(p.first,p.second);
             hl_q_time += timer.elapsed();
             queried_distances.push_back(hld);
             hl_query_time.push_back(hl_q_time);
-
-            dist ssspd;
-            double sssp_time = 0.0;
-            timer.restart();
-            if(q - num_queries < 100) {
-                if (graph.isDirected())
-                    ssspd = hl->DirectedDijkstra(s, t);
-                else
-                    ssspd = hl->DijkstraQuery(s, t);
-                sssp_time += timer.elapsed();
-                sssp_query_time.push_back(sssp_time);
-                if (ssspd != hld) {
-                    cout << "Error between " << s << " and " << t << "\n";
-                    cout << "HL distance " << (int) hld << " | SSSP distance " << (int) ssspd << "\n";
-                    throw new std::runtime_error("experiment fails");
-                }
+            if(hld != init_distances[j]) {
+                cout << "Error between " << p.first << " and " << p.second << "\n";
+                cout << "HL distance " << (int) hld << " | Init distance " << (int) init_distances[j] << "\n";
+                cout << "SSP distance " << (int) hl->StandardDijkstraQuery(p.first,p.second) << "\n";
+                throw new std::runtime_error("experiment fails");
             }
+        j++;
 
-            ++query_bar;
+
+            ++dyn_query_bar;
         //}
     }
     cout << "HL median time " << median(hl_query_time) << " | mean time " << average(hl_query_time) << "\n";
-    cout << "SSSP median time " << median(sssp_query_time) << " | mean time " << average(sssp_query_time) << "\n";
     vector<vertex> new_landmarks;
     hl->GetBeerStores(new_landmarks);
     delete hl;
@@ -362,7 +378,7 @@ int main(int argc, char **argv) {
     for(const auto & p: queried_nodes){
         double scratch_hl_q_time = 0.0;
         timer.restart();
-        dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->QueryDistance(p.first,p.second);
+        dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->SPQuery(p.first,p.second);
         scratch_hl_q_time += timer.elapsed();
         scratch_query_time.push_back(scratch_hl_q_time);
         if(queried_distances[i] != shld) {
