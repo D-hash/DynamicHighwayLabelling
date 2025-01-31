@@ -9,7 +9,7 @@ OPTIONS = -lnetworkit -lboost_serialization -lboost_program_options -lboost_syst
 INCLUDEPATH = /usr/include/valgrind
 PATHLIB = $(HOME)/networkit/build/
 
-TARGETS = testing_dynamic
+TARGETS = shifting_tests
 OTHERS = highway_cover_labelling.h libraries.h
 
 

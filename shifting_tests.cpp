@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
         dyn_time = 0;
         incremental_time.clear();
         int ce = 0;
-        for(int j = 0; j < 25; j++) {
+        for(int j = 0; j < 10; j++) {
             int removelandmark = *select_randomly(hl->landmarks.begin(), hl->landmarks.end());
             timer.restart();
             if(graph.isDirected())
@@ -270,7 +270,7 @@ int main(int argc, char **argv) {
             ce++;
         }
 
-        for(int j = 0; j < 25; j++) {
+        for(int j = 0; j < 10; j++) {
             int insertlandmark = *select_randomly(hl->landmark_pool.begin(), hl->landmark_pool.end());
             timer.restart();
             if(graph.isDirected())
@@ -311,50 +311,50 @@ int main(int argc, char **argv) {
         cout << "HL median time " << median(hl_query_time) << " | mean time " << average(hl_query_time) << "\n";
         vector<vertex> new_landmarks;
         hl->GetBeerStores(new_landmarks);
-
-        HighwayLabelling *scratch_hl = new HighwayLabelling(graph, L, ordering, 0, dyn_type);
-
-        scratch_hl->SetBeerStores(new_landmarks);
-
-        double scratch_hl_constr_time = 0.0;
-        timer.restart();
-        if(graph.isDirected()){
-            scratch_hl->ConstructDirWeighHL();
-        }
-        else {
-            if (graph.isWeighted())
-                scratch_hl->ConstructWeightedHighwayLabellingWithFlag();
-            else
-                scratch_hl->ConstructUnweightedHighwayLabelling();
-        }
-        scratch_hl_constr_time = timer.elapsed();
-        long scratch_hl_size = graph.isDirected() ? scratch_hl->DirectedLabellingSize() : scratch_hl->LabellingSize();
-        cout << "Scratch HL constr time " << scratch_hl_constr_time << " | HL size " << scratch_hl_size << "\n";
-        scratch_hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"_scratch");
-        ProgressStream scratch_query_bar(q);
-        scratch_query_bar.label() << "Scratch query computation";
-        int iq = 0;
-        for(const auto & p: queried_nodes){
-            double scratch_hl_q_time = 0.0;
-            timer.restart();
-            dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->QueryDistance(p.first,p.second);
-            scratch_hl_q_time += timer.elapsed();
-            scratch_query_time.push_back(scratch_hl_q_time);
-            if(queried_distances[iq] != shld) {
-                cout << "Error between " << p.first << " and " << p.second << "\n";
-                cout << "Updated HL distance " << (int) queried_distances[iq] << " | Scratch HL distance " << (int) shld << "\n";
-                throw new std::runtime_error("experiment fails");
-            }
-            ++iq;
-            ++scratch_query_bar;
-        }
+        //
+        // HighwayLabelling *scratch_hl = new HighwayLabelling(graph, L, ordering, 0, dyn_type);
+        //
+        // scratch_hl->SetBeerStores(new_landmarks);
+        //
+        // double scratch_hl_constr_time = 0.0;
+        // timer.restart();
+        // if(graph.isDirected()){
+        //     scratch_hl->ConstructDirWeighHL();
+        // }
+        // else {
+        //     if (graph.isWeighted())
+        //         scratch_hl->ConstructWeightedHighwayLabellingWithFlag();
+        //     else
+        //         scratch_hl->ConstructUnweightedHighwayLabelling();
+        // }
+        // scratch_hl_constr_time = timer.elapsed();
+        // long scratch_hl_size = graph.isDirected() ? scratch_hl->DirectedLabellingSize() : scratch_hl->LabellingSize();
+        // cout << "Scratch HL constr time " << scratch_hl_constr_time << " | HL size " << scratch_hl_size << "\n";
+        // scratch_hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"_scratch");
+        // ProgressStream scratch_query_bar(q);
+        // scratch_query_bar.label() << "Scratch query computation";
+        // int iq = 0;
+        // for(const auto & p: queried_nodes){
+        //     double scratch_hl_q_time = 0.0;
+        //     timer.restart();
+        //     dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->QueryDistance(p.first,p.second);
+        //     scratch_hl_q_time += timer.elapsed();
+        //     scratch_query_time.push_back(scratch_hl_q_time);
+        //     if(queried_distances[iq] != shld) {
+        //         cout << "Error between " << p.first << " and " << p.second << "\n";
+        //         cout << "Updated HL distance " << (int) queried_distances[iq] << " | Scratch HL distance " << (int) shld << "\n";
+        //         throw new std::runtime_error("experiment fails");
+        //     }
+        //     ++iq;
+        //     ++scratch_query_bar;
+        // }
         ofs << graph_location << "," << graph.numberOfNodes() << "," << graph.numberOfEdges() << "," << L << "," <<
         order_string << "," << q << "," << diameter << "," << modifications  << "," << hl_constr_time << "," << hl_size << ","
-        << dyn_time << "," << dhl_size << "," << average(hl_query_time) << "," << scratch_hl_constr_time
-        << "," << scratch_hl_size << "," << average(scratch_query_time) <<
+        << dyn_time << "," << dhl_size << "," << average(hl_query_time) << "," << 0
+        << "," << 0 << "," << 0 <<
         "\n";
 
-        delete scratch_hl;
+        //delete scratch_hl;
     }
 
     ofs.close();
