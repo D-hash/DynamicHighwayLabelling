@@ -9,6 +9,8 @@
 #include <networkit/distance/Diameter.hpp>
 #include  <random>
 #include  <iterator>
+#include <routingkit/contraction_hierarchy.h>
+
 
 using namespace std;
 double median(std::vector<double>& arr) { //SORTS
@@ -184,8 +186,7 @@ int main(int argc, char **argv) {
     HighwayLabelling *hl = new HighwayLabelling(graph, L, ordering, graph_changes, dyn_type);
 
     mytimer timer;
-    int topl[L];
-    sort(topl, topl + L);
+
     // construct labelling
     double hl_constr_time = 0.0;
     timer.restart();
@@ -199,51 +200,6 @@ int main(int argc, char **argv) {
     hl_constr_time = timer.elapsed();
     long hl_size = graph.isDirected() ? hl->DirectedLabellingSize() : hl->LabellingSize();
     cout << "HL constr time " << hl_constr_time << " | HL size " << hl_size << "\n";
-    vector<pair<int,int>> queried_nodes;
-
-    long q = num_queries;
-    ProgressStream query_bar(q);
-    query_bar.label() << "Query computation";
-    std::vector<dist> init_distances;
-    std::vector<double> init_query_time;
-    vector<double> sssp_query_time;
-
-    while(num_queries--){
-        // for(vertex s: graph.nodeRange()){
-        //     for (vertex t: graph.nodeRange()) {
-        int s = NetworKit::GraphTools::randomNode(graph);
-        int t = NetworKit::GraphTools::randomNode(graph);
-
-        queried_nodes.emplace_back(s,t);
-        double hl_q_time = 0.0;
-        timer.restart();
-        dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(s,t) : hl->SPQuery(s,t);
-        hl_q_time += timer.elapsed();
-        init_distances.push_back(hld);
-        init_query_time.push_back(hl_q_time);
-
-        dist ssspd;
-        double sssp_time = 0.0;
-        timer.restart();
-        if(q - num_queries < 100) {
-            if (graph.isDirected())
-                ssspd = hl->DirectedDijkstra(s, t);
-            else
-                ssspd = hl->StandardDijkstraQuery(s, t);
-            sssp_time += timer.elapsed();
-            sssp_query_time.push_back(sssp_time);
-            if (ssspd != hld) {
-                cout << "Error between " << s << " and " << t << "\n";
-                cout << "HL distance " << (int) hld << " | SSSP distance " << (int) ssspd << "\n";
-                throw new std::runtime_error("experiment fails");
-            }
-        }
-
-        ++query_bar;
-        //}
-    }
-    cout << "Init HL median time " << median(init_query_time) << " | mean time " << average(init_query_time) << "\n";
-    cout << "SSSP median time " << median(sssp_query_time) << " | mean time " << average(sssp_query_time) << "\n";
 
     int modifications = graph_changes;
     std::vector<double> incremental_time;
@@ -320,35 +276,46 @@ int main(int argc, char **argv) {
     hl->StoreIndex(graph_location+"_"+std::to_string(L)+"_"+std::to_string(dyn_type)+"_"+std::to_string(modifications)+"dynamic");
     vector<double> hl_query_time;
     vector<double> naive_query_time;
-    vector<double> bs_query_time;
+    vector<double> sssp_query_time;
+    vector<pair<int,int>> queried_nodes;
     vector<double> scratch_query_time;
+    vector<double> ch_query_time;
     vector<dist> queried_distances;
+    long q = num_queries;
     ProgressStream dyn_query_bar(q);
     dyn_query_bar.label() << "Query computation";
-    int j=0;
-    for(const auto & p: queried_nodes){
-    // for(vertex s: graph.nodeRange()){
-    //     for (vertex t: graph.nodeRange()) {
+    while(num_queries--){
+        int s = NetworKit::GraphTools::randomNode(graph);
 
-            double hl_q_time = 0.0;
-            timer.restart();
-            dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(p.first,p.second) : hl->SPQuery(p.first,p.second);
-            hl_q_time += timer.elapsed();
-            queried_distances.push_back(hld);
-            hl_query_time.push_back(hl_q_time);
-            if(hld != init_distances[j]) {
-                cout << "Error between " << p.first << " and " << p.second << "\n";
-                cout << "HL distance " << (int) hld << " | Init distance " << (int) init_distances[j] << "\n";
-                cout << "SSP distance " << (int) hl->StandardDijkstraQuery(p.first,p.second) << "\n";
+
+        int t = NetworKit::GraphTools::randomNode(graph);
+        queried_nodes.emplace_back(s,t);
+        double hl_q_time = 0.0;
+        timer.restart();
+        dist  hld= graph.isDirected() ? hl->DirectedQueryDistance(s,t) : hl->QueryDistance(s,t);
+        hl_q_time += timer.elapsed();
+        queried_distances.push_back(hld);
+        hl_query_time.push_back(hl_q_time);
+        dist ssspd;
+        double sssp_time = 0.0;
+        timer.restart();
+        if(q - num_queries < 100) {
+            if (graph.isDirected())
+                ssspd = hl->DirectedDijkstra(s, t);
+            else
+                ssspd = hl->DijkstraQuery(s, t);
+            sssp_time += timer.elapsed();
+            sssp_query_time.push_back(sssp_time);
+            if (ssspd != hld) {
+                cout << "Error between " << s << " and " << t << "\n";
+                cout << "HL distance " << (int) hld << " | SSSP distance " << (int) ssspd << "\n";
                 throw new std::runtime_error("experiment fails");
             }
-        j++;
-
-
-            ++dyn_query_bar;
-        //}
+        }
+        ++dyn_query_bar;
     }
     cout << "HL median time " << median(hl_query_time) << " | mean time " << average(hl_query_time) << "\n";
+    cout << "SSSP median time " << median(sssp_query_time) << " | mean time " << average(sssp_query_time) << "\n";
     vector<vertex> new_landmarks;
     hl->GetBeerStores(new_landmarks);
     delete hl;
@@ -378,7 +345,7 @@ int main(int argc, char **argv) {
     for(const auto & p: queried_nodes){
         double scratch_hl_q_time = 0.0;
         timer.restart();
-        dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->SPQuery(p.first,p.second);
+        dist  shld=  graph.isDirected() ? scratch_hl->DirectedQueryDistance(p.first,p.second) : scratch_hl->QueryDistance(p.first,p.second);
         scratch_hl_q_time += timer.elapsed();
         scratch_query_time.push_back(scratch_hl_q_time);
         if(queried_distances[i] != shld) {
@@ -388,6 +355,66 @@ int main(int argc, char **argv) {
         }
         ++i;
         ++scratch_query_bar;
+    }
+    delete scratch_hl;
+
+    unsigned node_count = graph.numberOfNodes();
+    std::vector<unsigned> tail;
+    std::vector<unsigned> head;
+    std::vector<unsigned> weight;
+    graph.forNodes([&](vertex from) {
+        graph.forNeighborsOf(from, [&] (vertex to) {
+            tail.push_back(from);
+            head.push_back(to);
+            weight.push_back(graph.weight(from, to));
+            tail.push_back(to);
+            head.push_back(to);
+            weight.push_back(graph.weight(from, to));
+        });
+    });
+    timer.restart();
+    double ch_cnst_time;
+
+    RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
+
+    ch_cnst_time = timer.elapsed();
+    ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
+    std::cout << "CH in time " << ch_cnst_time << "\n";
+
+    tail.clear();
+    head.clear();
+    weight.clear();
+
+    ProgressStream ch_query_bar(q);
+    ch_query_bar.label() << "CH query computation";
+    i = 0;
+    RoutingKit::ContractionHierarchyQuery chquery(ch);
+    for(const auto & p: queried_nodes){
+        double ch_hl_q_time = 0.0;
+        dist ch_d = null_distance;
+        dist sl = null_distance;
+        dist lt = null_distance;
+        timer.restart();
+        for(vertex l: new_landmarks) {
+            chquery.reset().add_source(p.first).add_target(l).run();
+            sl = chquery.get_distance();
+            chquery.reset().add_source(l).add_target(p.second).run();
+            lt = chquery.get_distance();
+
+            if(ch_d > sl+lt) {
+                ch_d = sl+lt;
+            }
+        }
+
+        ch_hl_q_time += timer.elapsed();
+        ch_query_time.push_back(ch_hl_q_time);
+        if(queried_distances[i] != ch_d) {
+            cout << "Error between " << p.first << " and " << p.second << "\n";
+            cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
+            throw new std::runtime_error("experiment fails");
+        }
+        ++i;
+        ++ch_query_bar;
     }
 
     std::string order_string;
@@ -425,7 +452,7 @@ int main(int argc, char **argv) {
     std::string l_string;
     string_object_name>>l_string;
     std::string prefix = graph.isDirected() ? "dir_" : "undir_";
-    std::string timestampstring = prefix +"custom_beer_dynamic_"+std::to_string(dyn_type)+"_"+shortenedName+"_"+l_string+"_"+"_"+order_string+"_"+"_"+tmp_time;
+    std::string timestampstring = prefix +"dynamic_beer_with_ch_"+std::to_string(dyn_type)+"_"+shortenedName+"_"+l_string+"_"+"_"+order_string+"_"+"_"+tmp_time;
 
     std::string logFile = timestampstring +".csv";
 
@@ -433,14 +460,12 @@ int main(int argc, char **argv) {
     std::ofstream ofs(logFile);
 
 
-    ofs << "G,V,E,L,ORD,Q,DIAM,C,HLCT,HLIS,DHLUT,DHLIS,DHLQT,SHLCT,SHLIS,SHLQT\n";
+    ofs << "G,V,E,L,ORD,Q,DIAM,C,HLCT,HLIS,DHLUT,DHLIS,DHLQT,SHLCT,SHLIS,SHLQT,CHCT,CHQT\n";
     ofs << graph_location << "," << graph.numberOfNodes() << "," << graph.numberOfEdges() << "," << L << "," <<
         order_string << "," << q << "," << diameter << "," << modifications  << "," << hl_constr_time << "," << hl_size << ","
         << average(incremental_time) << "," << dhl_size << "," << average(hl_query_time) << "," << scratch_hl_constr_time
-        << "," << scratch_hl_size << "," << average(scratch_query_time) <<
+        << "," << scratch_hl_size << "," << average(scratch_query_time) << "," << ch_cnst_time << "," << average(ch_query_time) <<
         "\n";
     ofs.close();
-
-    delete scratch_hl;
     exit(EXIT_FAILURE);
 }
