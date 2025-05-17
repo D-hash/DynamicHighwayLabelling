@@ -9,7 +9,7 @@ OPTIONS = -lnetworkit -lroutingkit -lboost_serialization -lboost_program_options
 INCLUDEPATH = /usr/include/routingkit
 PATHLIB = $(HOME)/Ricerca/RoutingKit/lib
 
-TARGETS = testing_dynamic
+TARGETS = shifting_tests
 OTHERS = highway_cover_labelling.h libraries.h
 
 
