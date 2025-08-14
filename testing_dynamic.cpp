@@ -172,6 +172,8 @@ int main(int argc, char **argv) {
         NetworKit::EdgeListReader edl(' ', starting_vertex_id, "#", true);
         graph = edl.read(graph_location);
     }
+    graph.removeMultiEdges();
+    graph.removeSelfLoops();
     if(!graph.isDirected()) {
         const NetworKit::Graph &graph_handle = graph;
         NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
@@ -180,7 +182,7 @@ int main(int argc, char **argv) {
         graph.indexEdges();
     }
     std::cout << "Graph after CC has " << graph.numberOfNodes() << " vertices and " << graph.numberOfEdges()
-              << " edges\n";
+              << " edges \n";
 
     vertex diameter = 0;
     HighwayLabelling *hl = new HighwayLabelling(graph, L, ordering, graph_changes, dyn_type);
@@ -200,7 +202,10 @@ int main(int argc, char **argv) {
     hl_constr_time = timer.elapsed();
     long hl_size = graph.isDirected() ? hl->DirectedLabellingSize() : hl->LabellingSize();
     cout << "HL constr time " << hl_constr_time << " | HL size " << hl_size << "\n";
-
+    cout << "Initial landmarks ";
+    for(auto v: hl->landmarks)
+        cout << v << " ";
+    cout << "\n" << flush;
     int modifications = graph_changes;
     std::vector<double> incremental_time;
     ProgressStream updates(modifications);
@@ -252,6 +257,7 @@ int main(int argc, char **argv) {
                     hl->AddLandmarkDirected(incland[incland.size() - ins_changes]);
                 else
                     hl->AddLandmark(incland[incland.size() - ins_changes]);
+                cout << "Inserted landmark " << incland[incland.size() - ins_changes] << endl << flush;
                 ins_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
@@ -263,6 +269,8 @@ int main(int argc, char **argv) {
                     hl->RemoveLandmarkDirected(removelandmark);
                 else
                     hl->RemoveLandmark(removelandmark);
+                cout << "Removed landmark " << removelandmark << endl << flush;
+
                 del_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
@@ -279,9 +287,11 @@ int main(int argc, char **argv) {
     vector<double> sssp_query_time;
     vector<pair<int,int>> queried_nodes;
     vector<double> scratch_query_time;
-    vector<double> ch_query_time;
+    vector<double> ch_query_time(num_queries);
     vector<dist> queried_distances;
     long q = num_queries;
+    std::cout << "Landmarks\n";
+    for(auto v: hl->landmarks) std::cout << v << " ";
     ProgressStream dyn_query_bar(q);
     dyn_query_bar.label() << "Query computation";
     while(num_queries--){
@@ -299,7 +309,7 @@ int main(int argc, char **argv) {
         dist ssspd;
         double sssp_time = 0.0;
         timer.restart();
-        if(q - num_queries < 100) {
+        if(q - num_queries < 10) {
             if (graph.isDirected())
                 ssspd = hl->DirectedDijkstra(s, t);
             else
@@ -373,49 +383,49 @@ int main(int argc, char **argv) {
         });
     });
     timer.restart();
-    double ch_cnst_time;
+    double ch_cnst_time = 0.0;
 
-    RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
-
-    ch_cnst_time = timer.elapsed();
-    ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
-    std::cout << "CH in time " << ch_cnst_time << "\n";
-
-    tail.clear();
-    head.clear();
-    weight.clear();
-
-    ProgressStream ch_query_bar(q);
-    ch_query_bar.label() << "CH query computation";
-    i = 0;
-    RoutingKit::ContractionHierarchyQuery chquery(ch);
-    for(const auto & p: queried_nodes){
-        double ch_hl_q_time = 0.0;
-        dist ch_d = null_distance;
-        dist sl = null_distance;
-        dist lt = null_distance;
-        timer.restart();
-        for(vertex l: new_landmarks) {
-            chquery.reset().add_source(p.first).add_target(l).run();
-            sl = chquery.get_distance();
-            chquery.reset().add_source(l).add_target(p.second).run();
-            lt = chquery.get_distance();
-
-            if(ch_d > sl+lt) {
-                ch_d = sl+lt;
-            }
-        }
-
-        ch_hl_q_time += timer.elapsed();
-        ch_query_time.push_back(ch_hl_q_time);
-        if(queried_distances[i] != ch_d) {
-            cout << "Error between " << p.first << " and " << p.second << "\n";
-            cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
-            throw new std::runtime_error("experiment fails");
-        }
-        ++i;
-        ++ch_query_bar;
-    }
+    // RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
+    //
+    // ch_cnst_time = timer.elapsed();
+    // ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
+    // std::cout << "CH in time " << ch_cnst_time << "\n";
+    //
+    // tail.clear();
+    // head.clear();
+    // weight.clear();
+    //
+    // ProgressStream ch_query_bar(q);
+    // ch_query_bar.label() << "CH query computation";
+    // i = 0;
+    // RoutingKit::ContractionHierarchyQuery chquery(ch);
+    // for(const auto & p: queried_nodes){
+    //     double ch_hl_q_time = 0.0;
+    //     dist ch_d = null_distance;
+    //     dist sl = null_distance;
+    //     dist lt = null_distance;
+    //     timer.restart();
+    //     for(vertex l: new_landmarks) {
+    //         chquery.reset().add_source(p.first).add_target(l).run();
+    //         sl = chquery.get_distance();
+    //         chquery.reset().add_source(l).add_target(p.second).run();
+    //         lt = chquery.get_distance();
+    //
+    //         if(ch_d > sl+lt) {
+    //             ch_d = sl+lt;
+    //         }
+    //     }
+    //
+    //     ch_hl_q_time += timer.elapsed();
+    //     ch_query_time.push_back(ch_hl_q_time);
+    //     if(queried_distances[i] != ch_d) {
+    //         cout << "Error between " << p.first << " and " << p.second << "\n";
+    //         cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
+    //         throw new std::runtime_error("experiment fails");
+    //     }
+    //     ++i;
+    //     ++ch_query_bar;
+    // }
 
     std::string order_string;
 
