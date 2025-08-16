@@ -223,11 +223,13 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
         for (vertex i = 0; i < L ; i++) {
             landmarks.insert(reverse_ordering[i]);
             is_landmark[reverse_ordering[i]] = true;
-
         }
+
         for(vertex i = L; i < L+changes/2; i++){
             landmarks_incremental.push_back(reverse_ordering[i]);
         }
+        // landmarks = {0,1,2,4,5,7,10,11,13,14};
+        // for(auto v: landmarks) is_landmark[v] = true;
     }
     else if(dyntype == 4) {
         for (vertex i = 0; i < L ; i++) {
@@ -514,7 +516,7 @@ void HighwayLabelling::ConstructDirWeighHL() {
             vertex v = pq.top().second;
             pq.pop();
             if(settled[v]) continue;
-            if(lndm_to_reach == 0 && DirectedQueryDistance(b, v) <= dij_distances[v]) continue;
+            if(lndm_to_reach == 0 && DirectedQueryDistance(b, v) < dij_distances[v]) continue;
             if (landmarks.find(v) != landmarks.end() && v != b) {
                 pruning_flag[v] = true;
                 highway[b][v] = dij_distances[v];
@@ -556,7 +558,7 @@ void HighwayLabelling::ConstructDirWeighHL() {
             vertex v = pq.top().second;
             pq.pop();
             if(settled[v]) continue;
-            if(lndm_to_reach == 0 && DirectedQueryDistance(v, b) <= dij_distances[v]) continue;
+            if(lndm_to_reach == 0 && DirectedQueryDistance(v, b) < dij_distances[v]) continue;
             if (landmarks.find(v) != landmarks.end() && v != b) {
                 pruning_flag[v] = true;
                 highway[v][b] = dij_distances[v];
@@ -1472,20 +1474,20 @@ void HighwayLabelling::RemoveLandmark(vertex r) {
         const vertex &l = ld.first;
         const dist &d = ld.second;
         dij_distances[l] = 0;
-        dij_distances[r] = d;
-        reached_vertices.push_back(r);
+        //dij_distances[r] = d;
+        //reached_vertices.push_back(r);
         std::priority_queue<std::pair<dist, vertex>, std::vector<std::pair<dist, vertex>>,
                 PQComparator> pq;
-        for (auto w: graph.neighborRange(r)) {
+        for (auto w: graph.neighborRange(l)) {
             if (w == l) continue;
-            if (dij_distances[w] > dij_distances[r] + graph.weight(r, w)) {
-                dij_distances[w] = dij_distances[r] + (dist) graph.weight(r, w);
+            if (dij_distances[w] > dij_distances[l] + graph.weight(l, w)) {
+                dij_distances[w] = dij_distances[l] + (dist) graph.weight(l, w);
                 reached_vertices.push_back(w);
                 pq.push(std::make_pair(dij_distances[w], w));
             }
         }
         pruning_flag[l] = true;
-        pruning_flag[r] = true;
+        //pruning_flag[r] = true;
         reached_vertices.push_back(l);
 
         while (!pq.empty()) {
@@ -1496,17 +1498,18 @@ void HighwayLabelling::RemoveLandmark(vertex r) {
                 pruning_flag[v] = true;
                 continue;
             }
-            if(QueryDistance(v,l) <= dij_distances[v]){
+            if(QueryDistance(v,l) < dij_distances[v]){
                 pruning_flag[v] = true;
                 continue;
             }
-            auto insertion_index = std::upper_bound(landmarks_distances[v].begin(),
-                                               landmarks_distances[v].end(), l);
-            distances[v].insert(
-                    distances[v].begin() + (insertion_index - landmarks_distances[v].begin()),
-                    dij_distances[v]);
-            landmarks_distances[v].insert(insertion_index, l);
-
+            if(find(landmarks_distances[v].begin(), landmarks_distances[v].end(), l) == landmarks_distances[v].end()) {
+                auto insertion_index = std::upper_bound(landmarks_distances[v].begin(),
+                                                   landmarks_distances[v].end(), l);
+                distances[v].insert(
+                        distances[v].begin() + (insertion_index - landmarks_distances[v].begin()),
+                        dij_distances[v]);
+                landmarks_distances[v].insert(insertion_index, l);
+            }
 
             for (auto w: graph.neighborRange(v)) {
                 if (dij_distances[w] > dij_distances[v] + graph.weight(v, w)) {
