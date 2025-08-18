@@ -388,47 +388,47 @@ int main(int argc, char **argv) {
     timer.restart();
     double ch_cnst_time = 0.0;
 
-    // RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
-    //
-    // ch_cnst_time = timer.elapsed();
-    // ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
-    // std::cout << "CH in time " << ch_cnst_time << "\n";
-    //
-    // tail.clear();
-    // head.clear();
-    // weight.clear();
-    //
-    // ProgressStream ch_query_bar(q);
-    // ch_query_bar.label() << "CH query computation";
-    // i = 0;
-    // RoutingKit::ContractionHierarchyQuery chquery(ch);
-    // for(const auto & p: queried_nodes){
-    //     double ch_hl_q_time = 0.0;
-    //     dist ch_d = null_distance;
-    //     dist sl = null_distance;
-    //     dist lt = null_distance;
-    //     timer.restart();
-    //     for(vertex l: new_landmarks) {
-    //         chquery.reset().add_source(p.first).add_target(l).run();
-    //         sl = chquery.get_distance();
-    //         chquery.reset().add_source(l).add_target(p.second).run();
-    //         lt = chquery.get_distance();
-    //
-    //         if(ch_d > sl+lt) {
-    //             ch_d = sl+lt;
-    //         }
-    //     }
-    //
-    //     ch_hl_q_time += timer.elapsed();
-    //     ch_query_time.push_back(ch_hl_q_time);
-    //     if(queried_distances[i] != ch_d) {
-    //         cout << "Error between " << p.first << " and " << p.second << "\n";
-    //         cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
-    //         throw new std::runtime_error("experiment fails");
-    //     }
-    //     ++i;
-    //     ++ch_query_bar;
-    // }
+    RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
+
+    ch_cnst_time = timer.elapsed();
+    ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
+    std::cout << "CH in time " << ch_cnst_time << "\n";
+
+    tail.clear();
+    head.clear();
+    weight.clear();
+
+    ProgressStream ch_query_bar(q);
+    ch_query_bar.label() << "CH query computation";
+    i = 0;
+    RoutingKit::ContractionHierarchyQuery chquery(ch);
+    for(const auto & p: queried_nodes){
+        double ch_hl_q_time = 0.0;
+        dist ch_d = null_distance;
+        dist sl = null_distance;
+        dist lt = null_distance;
+        timer.restart();
+        for(vertex l: new_landmarks) {
+            chquery.reset().add_source(p.first).add_target(l).run();
+            sl = chquery.get_distance();
+            chquery.reset().add_source(l).add_target(p.second).run();
+            lt = chquery.get_distance();
+
+            if(ch_d > sl+lt) {
+                ch_d = sl+lt;
+            }
+        }
+
+        ch_hl_q_time += timer.elapsed();
+        ch_query_time.push_back(ch_hl_q_time);
+        if(queried_distances[i] != ch_d) {
+            cout << "Error between " << p.first << " and " << p.second << "\n";
+            cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
+            throw new std::runtime_error("experiment fails");
+        }
+        ++i;
+        ++ch_query_bar;
+    }
 
     std::string order_string;
 
