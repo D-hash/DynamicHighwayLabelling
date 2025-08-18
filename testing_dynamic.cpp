@@ -245,11 +245,11 @@ int main(int argc, char **argv) {
         int ins_changes = graph_changes / 2;
         int del_changes = graph_changes / 2;
         std::vector<vertex> incland;
-        // hl->RemoveLandmark(14);
-        // hl->AddLandmark(6);
-        // hl->RemoveLandmark(1);
-        // hl->AddLandmark(9);
-        // hl->RemoveLandmark(6);
+        // hl->RemoveLandmark(15);
+        // hl->AddLandmark(108340);
+        // hl->RemoveLandmark(11);
+        // hl->AddLandmark(234);
+        // hl->RemoveLandmark(234);
         hl->GetIncrementalBeerStores(incland);
         while(graph_changes--) {
             if ((rand() % 2 == 0 || del_changes == 0) && ins_changes) {
