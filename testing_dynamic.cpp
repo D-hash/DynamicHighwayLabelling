@@ -245,11 +245,6 @@ int main(int argc, char **argv) {
         int ins_changes = graph_changes / 2;
         int del_changes = graph_changes / 2;
         std::vector<vertex> incland;
-        // hl->RemoveLandmark(15);
-        // hl->AddLandmark(108340);
-        // hl->RemoveLandmark(11);
-        // hl->AddLandmark(234);
-        // hl->RemoveLandmark(234);
         hl->GetIncrementalBeerStores(incland);
         while(graph_changes--) {
             if ((rand() % 2 == 0 || del_changes == 0) && ins_changes) {
@@ -257,25 +252,24 @@ int main(int argc, char **argv) {
                     std::cout << "Repeated landmark\n";
                     throw new std::runtime_error("old landmark");
                 }
+                cout << "Insert landmark " << incland[incland.size() - ins_changes] << endl << flush;
                 timer.restart();
                 if(graph.isDirected())
                     hl->AddLandmarkDirected(incland[incland.size() - ins_changes]);
                 else
                     hl->AddLandmark(incland[incland.size() - ins_changes]);
-                cout << "Inserted landmark " << incland[incland.size() - ins_changes] << endl << flush;
                 ins_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
 
             } else {
                 int removelandmark = *select_randomly(hl->landmarks.begin(), hl->landmarks.end());
+                cout << "Remove landmark " << removelandmark << endl << flush;
                 timer.restart();
                 if(graph.isDirected())
                     hl->RemoveLandmarkDirected(removelandmark);
                 else
                     hl->RemoveLandmark(removelandmark);
-                cout << "Removed landmark " << removelandmark << endl << flush;
-
                 del_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
