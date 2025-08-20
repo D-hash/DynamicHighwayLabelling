@@ -10,6 +10,7 @@ class HighwayLabelling {
     void ConstructUnweightedHighwayLabelling();
     void ConstructWeightedHighwayLabelling();
     void ConstructWeightedHighwayLabellingWithFlag();
+    void ConstructWeightedHighwayLabellingWithTriple();
     void ConstructDirWeighHL();
     //void RecursivePathFlag(NetworKit::Dijkstra* sssp, vertex source, vertex current_vertex, uint8_t* pruning_flag);
     void ConstructUnweightedNaiveLabelling();
@@ -71,8 +72,10 @@ private:
   std::vector<vertex> landmarks_incremental;
     // temp structures
     std::vector<bool> pruning_flag;
+    std::vector<bool> pruning_flag2;
     std::vector<bool> settled;
     std::vector<dist> dij_distances;
+    std::vector<dist> dij_distances_flag;
     std::vector<dist> dij_distances_in;
     std::vector<vertex> predecessors;
     std::vector<bool> is_landmark;
@@ -245,6 +248,7 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
     //L = L/2;
     pruning_flag.resize(V);
     dij_distances.resize(V, null_distance);
+    dij_distances_flag.resize(V, null_distance);
     dij_distances_in.resize(V, null_distance);
     predecessors.resize(V, null_vertex);
     settled.resize(V, false);
@@ -405,7 +409,84 @@ void HighwayLabelling::ConstructUnweightedHighwayLabelling() {}
 //  }
 //}
 
+void HighwayLabelling::ConstructWeightedHighwayLabelling() {
+    distances.resize(V);
+    landmarks_distances.resize(V);
+    for(int i = 0; i < V; i++) {
+        distances[i].clear();
+        landmarks_distances[i].clear();
+    }
+    highway.clear();
+    for(const auto & l1: landmarks) {
+        highway[l1] = std::unordered_map<vertex, dist> ();
+    }
 
+    // Start computing Highway Labelling (HL)
+    ProgressStream hl_bar(L);
+
+    hl_bar.label() << "Weighted highway labeling construction";
+    std::vector<vertex> reached_vertices;
+        for(const vertex & b : landmarks) {
+            highway[b][b] = 0;
+            dij_distances[b] = 0;
+            reached_vertices.push_back(b);
+            landmarks_distances[b].push_back(b);
+            distances[b].push_back(0);
+            std::priority_queue<std::pair<dist,vertex>, std::vector<std::pair<dist,vertex>>,
+                    PQComparator> pq;
+            pq.push(std::make_pair(0,b));
+            while (!pq.empty()) {
+                vertex v = pq.top().second;
+                dist delta = pq.top().first;
+                pq.pop();
+                if(dij_distances[v] < delta) continue;
+
+                if(is_landmark[v] && v != b){
+                    highway[b][v] = dij_distances[v];
+                    highway[v][b] = dij_distances[v];
+                }
+                for(auto w: graph.neighborRange(v)) {
+                    if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)){
+                        dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
+                        reached_vertices.push_back(w);
+                        pq.push(std::make_pair(dij_distances[w], w));
+                    }
+                }
+            }
+
+            dij_distances_flag[b] = 0;
+            pq.push(std::make_pair(0,b));
+            while(!pq.empty()) {
+                vertex v = pq.top().second;
+                dist delta = pq.top().first;
+                pq.pop();
+                if(dij_distances_flag[v] < delta) continue;
+                if(dij_distances_flag[v] > dij_distances[v]) continue;
+                if(dij_distances_flag[v] == dij_distances[v] && v != b){
+                    std::vector<vertex>::iterator insertion_index;
+                    insertion_index = std::upper_bound(landmarks_distances[v].begin(),
+                                                            landmarks_distances[v].end(), b);
+                    distances[v].insert(
+                            distances[v].begin() + (insertion_index - landmarks_distances[v].begin()),
+                            dij_distances[v]);
+                    landmarks_distances[v].insert(insertion_index, b);
+                }
+                for(auto w: graph.neighborRange(v)){
+                    if(is_landmark[w]) continue;
+                    if(dij_distances_flag[w] > dij_distances_flag[v] + graph.weight(v,w)){
+                        dij_distances_flag[w] = dij_distances_flag[v] + (dist)graph.weight(v,w);
+                        reached_vertices.push_back(w);
+                        pq.push(std::make_pair(dij_distances_flag[w], w));
+                    }
+                }
+            }
+            for(const auto & v: reached_vertices){
+                dij_distances[v] = null_distance;
+                dij_distances_flag[v] = null_distance;
+            }
+            reached_vertices.clear();
+        }
+}
 
 void HighwayLabelling::ConstructWeightedHighwayLabellingWithFlag() {
     // Initialization
@@ -474,6 +555,94 @@ void HighwayLabelling::ConstructWeightedHighwayLabellingWithFlag() {
         }
         for(const auto & v: reached_vertices){
             dij_distances[v] = null_distance;
+            predecessors[v] = null_vertex;
+            pruning_flag[v] = false;
+        }
+        reached_vertices.clear();
+        ++hl_bar;
+    }
+
+}
+
+void HighwayLabelling::ConstructWeightedHighwayLabellingWithTriple() {
+    // Initialization
+    distances.resize(V);
+    landmarks_distances.resize(V);
+    for(int i = 0; i < V; i++) {
+        distances[i].clear();
+        landmarks_distances[i].clear();
+    }
+    highway.clear();
+    for(const auto & l1: landmarks) {
+        highway[l1] = std::unordered_map<vertex, dist> ();
+    }
+
+    // Start computing Highway Labelling (HL)
+    ProgressStream hl_bar(L);
+
+    hl_bar.label() << "Weighted highway labeling construction";
+    std::vector<vertex> reached_vertices;
+    for(const vertex & b : landmarks) {
+
+        highway[b][b] = 0;
+        dij_distances[b] = 0;
+        reached_vertices.push_back(b);
+        landmarks_distances[b].push_back(b);
+        distances[b].push_back(0);
+        std::priority_queue<std::pair<std::pair<dist,bool>,vertex>, std::vector<std::pair<std::pair<dist,bool>,vertex>>,
+                PQTripleComparator> pq;
+        pq.push(std::make_pair(std::make_pair(0,false),b));
+        while(!pq.empty()){
+            vertex v = pq.top().second;
+            dist delta = pq.top().first.first;
+            bool flag = pq.top().first.second;
+            pq.pop();
+            if(dij_distances_flag[v] < dij_distances[v]) continue;
+            if(is_landmark[v] && v != b){
+                flag = true;
+                highway[b][v] = dij_distances[v];
+                highway[v][b] = dij_distances[v];
+                dij_distances_flag[v] = dij_distances[v];
+            }
+            if(!flag && !pruning_flag[v] && v != b){
+                pruning_flag[v] = true;
+                std::vector<vertex>::iterator insertion_index;
+                // for(size_t i = 0; i < landmarks_distances[v].size(); i++) {
+                //     if (landmarks_distances[v][i] == b) {
+                //         goto check;
+                //     }
+                // }
+                insertion_index = std::upper_bound(landmarks_distances[v].begin(),
+                                                        landmarks_distances[v].end(), b);
+                distances[v].insert(
+                        distances[v].begin() + (insertion_index - landmarks_distances[v].begin()),
+                        dij_distances[v]);
+                landmarks_distances[v].insert(insertion_index, b);
+                check:{};
+            }
+            for(auto w: graph.neighborRange(v)){
+                if(!flag) {
+                    if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)) {
+                        dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
+                        reached_vertices.push_back(w);
+                        pq.push(std::make_pair(std::make_pair(dij_distances[w],flag), w));
+                    }
+                }
+                else {
+                    if(dij_distances_flag[w] > dij_distances_flag[v] + graph.weight(v,w)){
+                        dij_distances_flag[w] = dij_distances_flag[v] + (dist)graph.weight(v,w);
+                        predecessors[w] = v;
+                        reached_vertices.push_back(w);
+                        pq.push(std::make_pair(std::make_pair(dij_distances[w],flag), w));
+                    }
+                }
+
+
+            }
+        }
+        for(const auto & v: reached_vertices){
+            dij_distances[v] = null_distance;
+            dij_distances_flag[v] = null_distance;
             predecessors[v] = null_vertex;
             pruning_flag[v] = false;
         }

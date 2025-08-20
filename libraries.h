@@ -40,6 +40,19 @@ struct PQComparator
     }
 };
 
+struct PQTripleComparator
+{
+    bool operator() (const std::pair<std::pair<dist,bool>, vertex>& p1, const std::pair<std::pair<dist,bool>, vertex>& p2)
+    {
+        if(p1.first.first == p2.first.first) {
+            return p1.first.second > p2.first.second;
+        }
+        else {
+            return p1.first > p2.first;
+        }
+    }
+};
+
 struct PQKeywordsComparator
 {
     bool operator() (const std::pair<dist, std::pair<vertex, bool>>& p1, const std::pair<dist, std::pair<vertex, bool>>& p2)
