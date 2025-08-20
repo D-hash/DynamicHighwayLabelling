@@ -221,8 +221,9 @@ int main(int argc, char **argv) {
             timer.restart();
             if(graph.isDirected())
                 hl->AddLandmarkDirected(newlandmark);
-            else
+            else if(graph.isWeighted())
                 hl->AddLandmark(newlandmark);
+            else hl->AddLandmarkUnweighted(newlandmark);
             incremental_time.push_back(timer.elapsed());
             ++updates;
         }
@@ -234,9 +235,9 @@ int main(int argc, char **argv) {
             timer.restart();
             if(graph.isDirected())
                 hl->RemoveLandmarkDirected(removelandmark);
-            else
+            else if(graph.isWeighted())
                 hl->RemoveLandmark(removelandmark);
-
+            else hl->RemoveLandmarkUnweighted(removelandmark);
             incremental_time.push_back(timer.elapsed());
             ++updates;
         }
@@ -257,8 +258,9 @@ int main(int argc, char **argv) {
                 timer.restart();
                 if(graph.isDirected())
                     hl->AddLandmarkDirected(incland[incland.size() - ins_changes]);
-                else
+                else if(graph.isWeighted())
                     hl->AddLandmark(incland[incland.size() - ins_changes]);
+                else hl->AddLandmarkUnweighted(incland[incland.size() - ins_changes]);
                 ins_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
@@ -269,8 +271,9 @@ int main(int argc, char **argv) {
                 timer.restart();
                 if(graph.isDirected())
                     hl->RemoveLandmarkDirected(removelandmark);
-                else
+                else if(graph.isWeighted())
                     hl->RemoveLandmark(removelandmark);
+                else hl->RemoveLandmarkUnweighted(removelandmark);
                 del_changes--;
                 incremental_time.push_back(timer.elapsed());
                 ++updates;
@@ -310,8 +313,9 @@ int main(int argc, char **argv) {
         if(q - num_queries < 10) {
             if (graph.isDirected())
                 ssspd = hl->DirectedDijkstra(s, t);
-            else
+            else if(graph.isWeighted())
                 ssspd = hl->DijkstraQuery(s, t);
+            else ssspd = hl->BFSQuery(s, t);
             sssp_time += timer.elapsed();
             sssp_query_time.push_back(sssp_time);
             if (ssspd != hld) {
@@ -382,48 +386,48 @@ int main(int argc, char **argv) {
     });
     timer.restart();
     double ch_cnst_time = 0.0;
-
-    RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
-
-    ch_cnst_time = timer.elapsed();
-    ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
-    std::cout << "CH in time " << ch_cnst_time << "\n";
-
-    tail.clear();
-    head.clear();
-    weight.clear();
-
-    ProgressStream ch_query_bar(q);
-    ch_query_bar.label() << "CH query computation";
-    i = 0;
-    RoutingKit::ContractionHierarchyQuery chquery(ch);
-    for(const auto & p: queried_nodes){
-        double ch_hl_q_time = 0.0;
-        dist ch_d = null_distance;
-        dist sl = null_distance;
-        dist lt = null_distance;
-        timer.restart();
-        for(vertex l: new_landmarks) {
-            chquery.reset().add_source(p.first).add_target(l).run();
-            sl = chquery.get_distance();
-            chquery.reset().add_source(l).add_target(p.second).run();
-            lt = chquery.get_distance();
-
-            if(ch_d > sl+lt) {
-                ch_d = sl+lt;
-            }
-        }
-
-        ch_hl_q_time += timer.elapsed();
-        ch_query_time.push_back(ch_hl_q_time);
-        if(queried_distances[i] != ch_d) {
-            cout << "Error between " << p.first << " and " << p.second << "\n";
-            cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
-            throw new std::runtime_error("experiment fails");
-        }
-        ++i;
-        ++ch_query_bar;
-    }
+    //
+    // RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
+    //
+    // ch_cnst_time = timer.elapsed();
+    // ch.save_file("index/"+graph_location+"_"+std::to_string(L)+"_ch");
+    // std::cout << "CH in time " << ch_cnst_time << "\n";
+    //
+    // tail.clear();
+    // head.clear();
+    // weight.clear();
+    //
+    // ProgressStream ch_query_bar(q);
+    // ch_query_bar.label() << "CH query computation";
+    // i = 0;
+    // RoutingKit::ContractionHierarchyQuery chquery(ch);
+    // for(const auto & p: queried_nodes){
+    //     double ch_hl_q_time = 0.0;
+    //     dist ch_d = null_distance;
+    //     dist sl = null_distance;
+    //     dist lt = null_distance;
+    //     timer.restart();
+    //     for(vertex l: new_landmarks) {
+    //         chquery.reset().add_source(p.first).add_target(l).run();
+    //         sl = chquery.get_distance();
+    //         chquery.reset().add_source(l).add_target(p.second).run();
+    //         lt = chquery.get_distance();
+    //
+    //         if(ch_d > sl+lt) {
+    //             ch_d = sl+lt;
+    //         }
+    //     }
+    //
+    //     ch_hl_q_time += timer.elapsed();
+    //     ch_query_time.push_back(ch_hl_q_time);
+    //     if(queried_distances[i] != ch_d) {
+    //         cout << "Error between " << p.first << " and " << p.second << "\n";
+    //         cout << "Updated HL distance " << (int) queried_distances[i] << " | Scratch HL distance " << (int) ch_d << "\n";
+    //         throw new std::runtime_error("experiment fails");
+    //     }
+    //     ++i;
+    //     ++ch_query_bar;
+    // }
 
     std::string order_string;
 
