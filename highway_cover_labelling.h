@@ -1535,45 +1535,87 @@ void HighwayLabelling::AddLandmark(vertex r) {
     }
     std:: cout << "Number of reached landmars " << reached_landmarks.size() << " vs total landmarks "
                                                                             << landmarks.size() << "\n" << std::flush;
-    for(const auto & lndm: reached_landmarks) {
-        std::vector<vertex> vertices_to_clean;
-        dij_distances[lndm] = 0;
-        vertices_to_clean.push_back(lndm);
-        while(!pq.empty()) pq.pop();
-        pq.push(std::make_pair(dij_distances[lndm], lndm));
-        while(!pq.empty()) {
-            vertex v = pq.top().second;
-            dist delta = pq.top().first;
-            pq.pop();
-            if(dij_distances[v] < delta) continue;
-            if(is_landmark[v] && v != lndm) continue;
-            if(QueryDistance(lndm,v) < delta) continue;
-            local_reached_vertices[v] = true;
-            for(auto w: graph.neighborRange(v)){
-                if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)){
-                    dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
-                    pq.push(std::make_pair(dij_distances[w], w));
-                    vertices_to_clean.push_back(w);
-                 }
 
+    for(const auto & lndm: reached_landmarks) {
+        std::priority_queue<std::pair<std::pair<dist,vertex>,vertex>, std::vector<std::pair<std::pair<dist,vertex>,vertex>>,
+            PQTripleComparator> pq;
+        std::vector<vertex> locallyreached;
+        for(const auto & u: reached_vertices) {
+            if(is_landmark[u]) continue;
+            auto it = std::lower_bound(landmarks_distances[u].begin(), landmarks_distances[u].end(), lndm);
+            if (it != landmarks_distances[u].end() && *it == lndm) {
+                pq.emplace(std::make_pair(distances[u]
+                    [it-landmarks_distances[u].begin()],u)
+                    ,it-landmarks_distances[u].begin());
             }
         }
-
-        for(auto v: reached_vertices) {
-            if(!local_reached_vertices[v]) {
-                for(size_t i = 0; i < landmarks_distances[v].size(); i++){
-                    if(landmarks_distances[v][i] < lndm) continue;
-                    if(landmarks_distances[v][i] > lndm) break;
-                    landmarks_distances[v].erase(landmarks_distances[v].begin()+i);
-                    distances[v].erase(distances[v].begin()+i);
+        while(!pq.empty()) {
+            vertex v = pq.top().first.second;
+            dist delta = pq.top().first.first;
+            vertex position = pq.top().second;
+            pq.pop();
+            if(dij_distances[v] != null_distance) continue;
+            for(const auto & w: graph.neighborRange(v)) {
+                auto itneigh = std::lower_bound(landmarks_distances[w].begin(), landmarks_distances[w].end(), lndm);
+                if(itneigh != landmarks_distances[w].end() && *itneigh == lndm) {
+                    if(distances[w][(itneigh-landmarks_distances[w].begin())]  + graph.weight(v,w) ==
+                            delta) {
+                        goto neigh_found;
+                            }
                 }
             }
+            landmarks_distances[v].erase(landmarks_distances[v].begin() + position);
+            distances[v].erase(distances[v].begin()+position);
+            dij_distances[v] = 1;
+            locallyreached.push_back(v);
+            neigh_found: {};
         }
-        for(const auto & v: vertices_to_clean){
+        for(const auto & v: locallyreached){
             dij_distances[v] = null_distance;
-            local_reached_vertices[v] = false;
         }
     }
+    reached_vertices.clear();
+    L++;
+
+    // for(const auto & lndm: reached_landmarks) {
+    //     std::vector<vertex> vertices_to_clean;
+    //     dij_distances[lndm] = 0;
+    //     vertices_to_clean.push_back(lndm);
+    //     while(!pq.empty()) pq.pop();
+    //     pq.push(std::make_pair(dij_distances[lndm], lndm));
+    //     while(!pq.empty()) {
+    //         vertex v = pq.top().second;
+    //         dist delta = pq.top().first;
+    //         pq.pop();
+    //         if(dij_distances[v] < delta) continue;
+    //         if(is_landmark[v] && v != lndm) continue;
+    //         if(QueryDistance(lndm,v) < delta) continue;
+    //         local_reached_vertices[v] = true;
+    //         for(auto w: graph.neighborRange(v)){
+    //             if(dij_distances[w] > dij_distances[v] + graph.weight(v,w)){
+    //                 dij_distances[w] = dij_distances[v] + (dist)graph.weight(v,w);
+    //                 pq.push(std::make_pair(dij_distances[w], w));
+    //                 vertices_to_clean.push_back(w);
+    //              }
+    //
+    //         }
+    //     }
+    //
+    //     for(auto v: reached_vertices) {
+    //         if(!local_reached_vertices[v]) {
+    //             for(size_t i = 0; i < landmarks_distances[v].size(); i++){
+    //                 if(landmarks_distances[v][i] < lndm) continue;
+    //                 if(landmarks_distances[v][i] > lndm) break;
+    //                 landmarks_distances[v].erase(landmarks_distances[v].begin()+i);
+    //                 distances[v].erase(distances[v].begin()+i);
+    //             }
+    //         }
+    //     }
+    //     for(const auto & v: vertices_to_clean){
+    //         dij_distances[v] = null_distance;
+    //         local_reached_vertices[v] = false;
+    //     }
+    // }
 
 
     reached_vertices.clear();
@@ -2410,16 +2452,6 @@ inline void HighwayLabelling::StoreIndex(std::string filename) {
             if(highway[v][w] != null_distance)
                 ofs.write((char*)&highway[v][w], sizeof(highway[v][w]));
         }
-    }
-
-    std::cout << "Labeling \n";
-    for (int i = 0; i < V; i++) {
-        std::cout << "L(" << i << "): ";
-        for (int j = 0; j < distances[i].size(); j++) {
-            if(distances[i][j] != null_distance)
-                std::cout << "(" << landmarks_distances[i][j] << "," << distances[i][j] << "), ";
-        }
-        std::cout << std::endl;
     }
     ofs.close();
 }
