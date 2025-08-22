@@ -420,6 +420,8 @@ void HighwayLabelling::ConstructUnweightedHighwayLabelling() {
                 dij_distances_flag[v] = null_distance;
             }
             reached_vertices.clear();
+
+            ++hl_bar;
         }
 }
 //void HighwayLabelling::ConstructUnweightedHighwayLabelling() {
@@ -559,6 +561,8 @@ void HighwayLabelling::ConstructWeightedHighwayLabelling() {
                 dij_distances_flag[v] = null_distance;
             }
             reached_vertices.clear();
+            ++hl_bar;
+
         }
 }
 
@@ -1416,8 +1420,6 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
         predecessors[v] = null_vertex;
         pruning_flag[v] = false;
     }
-    std:: cout << "Number of reached landmarks " << reached_landmarks.size() <<  " vs in L(r) "
-    << landmarksr << "\n" << std::flush;
 
     for(const auto & lndm: reached_landmarks) {
         std::priority_queue<std::pair<std::pair<dist,vertex>,vertex>, std::vector<std::pair<std::pair<dist,vertex>,vertex>>,
@@ -1533,8 +1535,6 @@ void HighwayLabelling::AddLandmark(vertex r) {
         predecessors[v] = null_vertex;
         pruning_flag[v] = false;
     }
-    std:: cout << "Number of reached landmars " << reached_landmarks.size() << " vs total landmarks "
-                                                                            << landmarks.size() << "\n" << std::flush;
 
     for(const auto & lndm: reached_landmarks) {
         std::priority_queue<std::pair<std::pair<dist,vertex>,vertex>, std::vector<std::pair<std::pair<dist,vertex>,vertex>>,
