@@ -201,8 +201,6 @@ HighwayLabelling::HighwayLabelling(NetworKit::Graph &g, int l, int ordering_type
                       return a.first > b.first;
                   }
               });
-
-
     for (size_t count = 0; count < graph.numberOfNodes(); count++) {
         this->reverse_ordering[count] = ordering_rank[count].second;
         this->ordering[ordering_rank[count].second] = count;
@@ -1377,6 +1375,7 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
     distances[r].push_back(0);
     // search from r to fill L a la Akiba (prune when reaching landmarks different from r, compute query to vertices not in L)
     std::vector<vertex> reached_vertices;
+    std::vector<vertex> reached_vertices_to_consider;
 
     dij_distances[r] = 0;
     reached_vertices.push_back(r);
@@ -1401,6 +1400,7 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
             reached_landmarks.push_back(v);
             continue;
         }
+        reached_vertices_to_consider.push_back(v);
         auto insertion_index = std::upper_bound(landmarks_distances[v].begin(), landmarks_distances[v].end(), r);
         distances[v].insert(distances[v].begin() + (insertion_index - landmarks_distances[v].begin()), dij_distances[v]);
         landmarks_distances[v].insert(insertion_index, r);
@@ -1415,30 +1415,31 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
 
         }
     }
+    for(const auto & v: reached_landmarks) pruning_flag[v] = false;
     for(const auto & v: reached_vertices){
         dij_distances[v] = null_distance;
         predecessors[v] = null_vertex;
         pruning_flag[v] = false;
     }
-
+    std::cout << "Reached vertices toc " << reached_vertices_to_consider.size() << " | reached vertices " << reached_vertices.size()
+    << " | total nodes " << graph.numberOfNodes() << std::endl;
     for(const auto & lndm: reached_landmarks) {
-        std::priority_queue<std::pair<std::pair<dist,vertex>,vertex>, std::vector<std::pair<std::pair<dist,vertex>,vertex>>,
-            PQTripleComparator> pq;
+        std::vector<std::pair<std::pair<dist,vertex>,vertex>> pq;
         std::vector<vertex> locallyreached;
-        for(const auto & u: reached_vertices) {
+        for(const auto & u: reached_vertices_to_consider) {
             if(is_landmark[u]) continue;
             auto it = std::lower_bound(landmarks_distances[u].begin(), landmarks_distances[u].end(), lndm);
             if (it != landmarks_distances[u].end() && *it == lndm) {
-                pq.emplace(std::make_pair(distances[u]
+                pq.emplace_back(std::make_pair(distances[u]
                     [it-landmarks_distances[u].begin()],u)
                     ,it-landmarks_distances[u].begin());
             }
         }
-        while(!pq.empty()) {
-            vertex v = pq.top().first.second;
-            dist delta = pq.top().first.first;
-            vertex position = pq.top().second;
-            pq.pop();
+        std::sort(pq.begin(), pq.end());
+        for(const auto & entry: pq) {
+            vertex v = entry.first.second;
+            dist delta = entry.first.first;
+            vertex position = entry.second;
             if(dij_distances[v] != null_distance) continue;
             for(const auto & w: graph.neighborRange(v)) {
                 auto itneigh = std::lower_bound(landmarks_distances[w].begin(), landmarks_distances[w].end(), lndm);
@@ -1459,7 +1460,6 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
             dij_distances[v] = null_distance;
         }
     }
-    reached_vertices.clear();
     L++;
 }
 
@@ -1490,6 +1490,7 @@ void HighwayLabelling::AddLandmark(vertex r) {
     distances[r].push_back(0);
     // search from r to fill L a la Akiba (prune when reaching landmarks different from r, compute query to vertices not in L)
     std::vector<vertex> reached_vertices;
+    std::vector<vertex> reached_vertices_to_consider;
     dij_distances[r] = 0;
     reached_vertices.push_back(r);
     std::vector<vertex> reached_landmarks;
@@ -1516,6 +1517,7 @@ void HighwayLabelling::AddLandmark(vertex r) {
             pruning_flag[v] = true;
             continue;
         }
+        reached_vertices_to_consider.push_back(v);
         auto insertion_index = std::upper_bound(landmarks_distances[v].begin(), landmarks_distances[v].end(), r);
         distances[v].insert(distances[v].begin() + (insertion_index - landmarks_distances[v].begin()), dij_distances[v]);
         landmarks_distances[v].insert(insertion_index, r);
@@ -1540,7 +1542,7 @@ void HighwayLabelling::AddLandmark(vertex r) {
         std::priority_queue<std::pair<std::pair<dist,vertex>,vertex>, std::vector<std::pair<std::pair<dist,vertex>,vertex>>,
             PQTripleComparator> pq;
         std::vector<vertex> locallyreached;
-        for(const auto & u: reached_vertices) {
+        for(const auto & u: reached_vertices_to_consider) {
             if(is_landmark[u]) continue;
             auto it = std::lower_bound(landmarks_distances[u].begin(), landmarks_distances[u].end(), lndm);
             if (it != landmarks_distances[u].end() && *it == lndm) {
@@ -1574,7 +1576,6 @@ void HighwayLabelling::AddLandmark(vertex r) {
             dij_distances[v] = null_distance;
         }
     }
-    reached_vertices.clear();
     L++;
 
     // for(const auto & lndm: reached_landmarks) {
@@ -1616,10 +1617,6 @@ void HighwayLabelling::AddLandmark(vertex r) {
     //         local_reached_vertices[v] = false;
     //     }
     // }
-
-
-    reached_vertices.clear();
-    L++;
 }
 
 void HighwayLabelling::AddLandmarkDirected(vertex r) {
