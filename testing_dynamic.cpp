@@ -208,10 +208,7 @@ int main(int argc, char **argv) {
     hl_constr_time = timer.elapsed();
     long hl_size = graph.isDirected() ? hl->DirectedLabellingSize() : hl->LabellingSize();
     cout << "HL constr time " << hl_constr_time << " | HL size " << hl_size << "\n";
-    cout << "Initial landmarks ";
-    for(auto v: hl->landmarks)
-        cout << v << " ";
-    cout << "\n" << flush;
+
 
     int modifications = graph_changes;
     std::vector<double> incremental_time;
@@ -299,8 +296,6 @@ int main(int argc, char **argv) {
     vector<double> ch_query_time(num_queries);
     vector<dist> queried_distances;
     long q = num_queries;
-    std::cout << "Landmarks\n";
-    for(auto v: hl->landmarks) std::cout << v << " ";
     ProgressStream dyn_query_bar(q);
     dyn_query_bar.label() << "Query computation";
     while(num_queries--){
