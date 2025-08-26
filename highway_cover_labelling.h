@@ -1468,12 +1468,14 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
             if(landmarks_distances[v][i] > r) {
                 break;
             }
+            if(distances[v][i]>=dij_distances[v]+highway[r][landmarks_distances[v][i]])
             lndm_rch_vrtx[landmarks_distances[v][i]].emplace_back(v, i);
         }
         distances[v].insert(distances[v].begin() + i, dij_distances[v]);
         landmarks_distances[v].insert(landmarks_distances[v].begin() + i, r);
         i += 1;
         for(; i < landmarks_distances[v].size(); i++) {
+            if(distances[v][i]>=dij_distances[v]+highway[r][landmarks_distances[v][i]])
             lndm_rch_vrtx[landmarks_distances[v][i]].emplace_back(v, i);
         }
 
@@ -1619,12 +1621,14 @@ void HighwayLabelling::AddLandmark(vertex r) {
             if(landmarks_distances[v][i] > r) {
                 break;
             }
+            if(distances[v][i]>=dij_distances[v]+highway[r][landmarks_distances[v][i]])
             lndm_rch_vrtx[landmarks_distances[v][i]].emplace_back(v, i);
         }
         distances[v].insert(distances[v].begin() + i, dij_distances[v]);
         landmarks_distances[v].insert(landmarks_distances[v].begin() + i, r);
         i += 1;
         for(; i < landmarks_distances[v].size(); i++) {
+            if(distances[v][i]>=dij_distances[v]+highway[r][landmarks_distances[v][i]])
             lndm_rch_vrtx[landmarks_distances[v][i]].emplace_back(v, i);
         }
 
