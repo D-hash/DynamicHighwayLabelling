@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
     //     graph.indexEdges();
     // }
     graph.shrinkToFit();
-    graph.indexEdges();
+    //graph.indexEdges();
     std::cout << "Graph has " << graph.numberOfNodes() << " vertices and " << graph.numberOfEdges()
               << " edges \n";
 
@@ -259,7 +259,6 @@ int main(int argc, char **argv) {
                     std::cout << "Repeated landmark\n";
                     throw new std::runtime_error("old landmark");
                 }
-                cout << "Insert landmark " << incland[incland.size() - ins_changes] << endl << flush;
                 timer.restart();
                 if(graph.isDirected())
                     hl->AddLandmarkDirected(incland[incland.size() - ins_changes]);
@@ -272,7 +271,6 @@ int main(int argc, char **argv) {
 
             } else {
                 int removelandmark = *select_randomly(hl->landmarks.begin(), hl->landmarks.end());
-                cout << "Remove landmark " << removelandmark << endl << flush;
                 timer.restart();
                 if(graph.isDirected())
                     hl->RemoveLandmarkDirected(removelandmark);

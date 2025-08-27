@@ -1524,7 +1524,6 @@ void HighwayLabelling::AddLandmarkUnweighted(vertex r) {
             neigh_found: {};
         }
     }
-    std::cout << "Max number of reached vertices per landmark " << maxrch << "\n";
     L++;
 
     // for(const auto & lndm: reached_landmarks) {
@@ -1678,7 +1677,6 @@ void HighwayLabelling::AddLandmark(vertex r) {
             neigh_found: {};
         }
     }
-    std::cout << "Max number of reached vertices per landmark " << maxrch << "\n";
 
     L++;
 
