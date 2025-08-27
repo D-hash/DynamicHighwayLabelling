@@ -187,6 +187,8 @@ int main(int argc, char **argv) {
     //     graph.shrinkToFit();
     //     graph.indexEdges();
     // }
+    graph.shrinkToFit();
+    graph.indexEdges();
     std::cout << "Graph has " << graph.numberOfNodes() << " vertices and " << graph.numberOfEdges()
               << " edges \n";
 
