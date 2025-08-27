@@ -178,16 +178,16 @@ int main(int argc, char **argv) {
         NetworKit::EdgeListReader edl(' ', starting_vertex_id, "#", true);
         graph = edl.read(graph_location);
     }
-    graph.removeMultiEdges();
-    graph.removeSelfLoops();
-    if(!graph.isDirected()) {
-        const NetworKit::Graph &graph_handle = graph;
-        NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
-        graph = cc->extractLargestConnectedComponent(graph_handle, true);
-        graph.shrinkToFit();
-        graph.indexEdges();
-    }
-    std::cout << "Graph after CC has " << graph.numberOfNodes() << " vertices and " << graph.numberOfEdges()
+    // graph.removeMultiEdges();
+    // graph.removeSelfLoops();
+    // if(!graph.isDirected()) {
+    //     const NetworKit::Graph &graph_handle = graph;
+    //     NetworKit::ConnectedComponents *cc = new NetworKit::ConnectedComponents(graph_handle);
+    //     graph = cc->extractLargestConnectedComponent(graph_handle, true);
+    //     graph.shrinkToFit();
+    //     graph.indexEdges();
+    // }
+    std::cout << "Graph has " << graph.numberOfNodes() << " vertices and " << graph.numberOfEdges()
               << " edges \n";
 
     vertex diameter = 0;
