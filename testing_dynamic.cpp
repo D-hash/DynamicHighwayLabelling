@@ -371,24 +371,25 @@ int main(int argc, char **argv) {
     }
     delete scratch_hl;
 
-    unsigned node_count = graph.numberOfNodes();
-    std::vector<unsigned> tail;
-    std::vector<unsigned> head;
-    std::vector<unsigned> weight;
-    graph.forNodes([&](vertex from) {
-        graph.forNeighborsOf(from, [&] (vertex to) {
-            tail.push_back(from);
-            head.push_back(to);
-            weight.push_back(graph.weight(from, to));
-            tail.push_back(to);
-            head.push_back(to);
-            weight.push_back(graph.weight(from, to));
-        });
-    });
+
     timer.restart();
     double ch_cnst_time = 0.0;
 
     if(contraction_hierarchy) {
+        unsigned node_count = graph.numberOfNodes();
+        std::vector<unsigned> tail;
+        std::vector<unsigned> head;
+        std::vector<unsigned> weight;
+        graph.forNodes([&](vertex from) {
+            graph.forNeighborsOf(from, [&] (vertex to) {
+                tail.push_back(from);
+                head.push_back(to);
+                weight.push_back(graph.weight(from, to));
+                tail.push_back(to);
+                head.push_back(to);
+                weight.push_back(graph.weight(from, to));
+            });
+        });
         RoutingKit::ContractionHierarchy ch = RoutingKit::ContractionHierarchy::build(node_count, tail, head, weight);
 
         ch_cnst_time = timer.elapsed();
